@@ -180,6 +180,7 @@ public class MyFakebookOracle extends FakebookOracle {
 	// the constraint that user1_id < user2_id
 	//
 	//Rachael did the thing
+	//Rachael also doesn't know how to push things
 	public void popularFriends() throws SQLException {
 		// Find the following information from your database and store the information as shown 
 		//this.popularFriends.add(new UserInfo(10L, "Billy", "SmellsFunny"));
