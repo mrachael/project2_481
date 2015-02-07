@@ -1,12 +1,12 @@
 package project2;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.TreeSet;
 import java.util.Vector;
+import java.sql.PreparedStatement;
 
 public class MyFakebookOracle extends FakebookOracle {
 	
@@ -27,6 +27,7 @@ public class MyFakebookOracle extends FakebookOracle {
 	String participantTableName = null;
 	String albumTableName = null;
 	String photoTableName = null;
+	String coverPhotoTableName = null;
 	String tagTableName = null;
 	
 	
@@ -39,6 +40,14 @@ public class MyFakebookOracle extends FakebookOracle {
 		cityTableName = prefix+dataType+"_CITIES";
 		userTableName = prefix+dataType+"_USERS";
 		friendsTableName = prefix+dataType+"_FRIENDS";
+		currentCityTableName = prefix+dataType+"_USER_CURRENT_CITY";
+		hometownCityTableName = prefix+dataType+"_USER_HOMETOWN_CITY";
+		programTableName = prefix+dataType+"_PROGRAMS";
+		educationTableName = prefix+dataType+"_EDUCATION";
+		eventTableName = prefix+dataType+"_USER_EVENTS";
+		albumTableName = prefix+dataType+"_ALBUMS";
+		photoTableName = prefix+dataType+"_PHOTOS";
+		tagTableName = prefix+dataType+"_TAGS";
 	}
 	
 	
@@ -163,20 +172,59 @@ public class MyFakebookOracle extends FakebookOracle {
 	
 	@Override
 	// ***** Query 2 *****
-	// Find the user(s) who have no friends in the network
+	// Find the user(s) who have strictly more than 80 friends in the network
 	//
 	// Be careful on this query!
 	// Remember that if two users are friends, the friends table
 	// only contains the pair of user ids once, subject to 
 	// the constraint that user1_id < user2_id
 	//
+	//Rachael did the thing
 	public void popularFriends() throws SQLException {
 		// Find the following information from your database and store the information as shown 
-		this.popularFriends.add(new UserInfo(10L, "Billy", "SmellsFunny"));
-		this.popularFriends.add(new UserInfo(11L, "Jenny", "BadBreath"));
-		this.countPopularFriends = 2;
+		//this.popularFriends.add(new UserInfo(10L, "Billy", "SmellsFunny"));
+		//this.popularFriends.add(new UserInfo(11L, "Jenny", "BadBreath"));
+		//this.countPopularFriends = 2;
+		
+		ResultSet rst = null; 
+		PreparedStatement getPopularFriendsStmt = null;
+		
+		try {
+			String getPopularFriendsSql = "SELECT user_id, first_name, last_name "
+					+ "FROM " + userTableName + " WHERE user_id IN "
+					+ "(SELECT user1_id FROM ( "
+						+ "SELECT user1_id, user2_id from " + friendsTableName
+						+ " UNION "
+						+ "SELECT user2_id, user1_id from " + friendsTableName + ") "
+						+ "GROUP BY user1_id HAVING COUNT(*)>80)";
+			getPopularFriendsStmt = oracleConnection.prepareStatement(getPopularFriendsSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+			
+			// getMonthCountSql is the query that will run
+			// For each month, find the number of friends born that month
+			// Sort them in descending order of count
+			// executeQuery will run the query and generate the result set
+			rst = getPopularFriendsStmt.executeQuery();
+			
+			this.countPopularFriends = 0;
+			while(rst.next()) {
+				this.popularFriends.add(new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3)));
+				this.countPopularFriends++;
+			}
+		} catch (SQLException e) {
+			System.err.println(e.getMessage());
+			// can do more things here
+			
+			throw e;		
+		} finally {
+			// Close statement and result set
+			if(rst != null) 
+				rst.close();
+			
+			if(getPopularFriendsStmt != null)
+				getPopularFriendsStmt.close();
+		}
 	}
-	 
+
 
 	@Override
 	// ***** Query 3 *****
