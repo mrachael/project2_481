@@ -161,13 +161,64 @@ public class MyFakebookOracle extends FakebookOracle {
 	//
 	public void findNameInfo() throws SQLException { // Query1
         // Find the following information from your database and store the information as shown
-		this.longestLastNames.add("JohnJacobJingleheimerSchmidt");
-		this.shortestLastNames.add("Ng");
-		this.shortestLastNames.add("Fu");
-		this.shortestLastNames.add("Wu");
-		this.mostCommonLastNames.add("Wang");
-		this.mostCommonLastNames.add("Smith");
-		this.mostCommonLastNamesCount = 10;
+		/* Catherine did this query */
+		ResultSet rst = null;
+		PreparedStatement getNamesStmt = null;
+		PreparedStatement getLongestStmt = null;
+		PreparedStatement getShortestStmt = null;
+		
+		try {
+			String getNamesSql = "select LAST_NAME from " +
+				userTableName +
+				" order by length(LAST_NAME) DESC";
+			getNamesStmt = oracleConnection.prepareStatement(getNamesSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+			rst = getNamesStmt.executeQuery();
+			
+			int longest = 0;
+			while(rst.next()) {
+				int length = rst.getString(1).length();
+				if (rst.isFirst()) {
+					longest = length;
+					this.longestLastNames.add(rst.getString(1));
+				}	
+				else if (length == longest)
+					this.longestLastNames.add(rst.getString(1));
+			}
+			
+			int shortest = 0;
+			rst.setFetchDirection(ResultSet.FETCH_REVERSE);
+			while(rst.previous()) {
+				int length = rst.getString(1).length();
+				if (rst.isLast()) {
+					shortest = length;
+					System.out.println(shortest);
+					this.shortestLastNames.add(rst.getString(1));
+				}
+				else if (length == shortest)
+					this.shortestLastNames.add(rst.getString(1));
+			}
+			
+			
+			
+		} catch (SQLException e) {
+			System.err.println(e.getMessage());
+			// can do more things here
+			
+			throw e;		
+		} finally {
+			// Close statement and result set
+			if(rst != null) 
+				rst.close();
+			
+			if(getNamesStmt != null)
+				getNamesStmt.close();
+			
+			if(getLongestStmt != null)
+				getLongestStmt.close();
+			
+			if(getShortestStmt != null)
+				getShortestStmt.close();
+		}
 	}
 	
 	@Override
