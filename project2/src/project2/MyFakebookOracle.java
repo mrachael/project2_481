@@ -357,19 +357,75 @@ public class MyFakebookOracle extends FakebookOracle {
 	// If there are ties, choose the photo with the smaller numeric PhotoID first
 	// 
 	public void findPhotosWithMostTags(int n) throws SQLException { 
-		String photoId = "1234567";
-		String albumId = "123456789";
-		String albumName = "album1";
-		String photoCaption = "caption1";
-		String photoLink = "http://google.com";
-		PhotoInfo p = new PhotoInfo(photoId, albumId, albumName, photoCaption, photoLink);
-		TaggedPhotoInfo tp = new TaggedPhotoInfo(p);
-		tp.addTaggedUser(new UserInfo(12345L, "taggedUserFirstName1", "taggedUserLastName1"));
-		tp.addTaggedUser(new UserInfo(12345L, "taggedUserFirstName2", "taggedUserLastName2"));
-		this.photosWithMostTags.add(tp);
+		
+		ResultSet tinf = null; 
+		ResultSet pinf = null;
+		ResultSet uinf = null;
+		PreparedStatement getTaggedPhotoIDsStmt = null;
+		PreparedStatement getPhotoInfoStmt = null;
+		PreparedStatement getTaggedUsersStmt = null;
+		
+		try {
+			String getTaggedPhotoIDsSql = "SELECT tag_photo_id "
+					+ "FROM " + tagTableName + " GROUP BY tag_photo_id "
+					+ "ORDER BY COUNT(tag_photo_id) DESC, tag_photo_id ASC";
+
+			getTaggedPhotoIDsStmt = oracleConnection.prepareStatement(getTaggedPhotoIDsSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+			tinf = getTaggedPhotoIDsStmt.executeQuery();
+			
+			
+			while(tinf.next()  && n > 0) {
+				
+				String getPhotoInfoSql = "SELECT P.photo_id, A.album_id, A.album_name, P.photo_caption, P.photo_link"
+						+ " FROM " + photoTableName + " P, " + albumTableName + " A "
+						+ " WHERE P.photo_id = ? AND P.album_id=A.album_id";
+				getPhotoInfoStmt = oracleConnection.prepareStatement(getPhotoInfoSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+				getPhotoInfoStmt.setString(1, tinf.getString(1));
+				pinf = getPhotoInfoStmt.executeQuery();
+				if (pinf.next())
+				{
+					PhotoInfo p = new PhotoInfo(pinf.getString(1), pinf.getString(2), pinf.getString(3), pinf.getString(4), pinf.getString(5));
+					TaggedPhotoInfo tp = new TaggedPhotoInfo(p);
+					
+					String getTaggedUsersSql = "SELECT user_id, first_name, last_name FROM " + userTableName + 
+							" WHERE user_id IN (SELECT tag_subject_id FROM " + tagTableName + " WHERE tag_photo_id = ?)";
+					getTaggedUsersStmt = oracleConnection.prepareStatement(getTaggedUsersSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+					getTaggedUsersStmt.setString(1, tinf.getString(1));
+					
+					uinf = getTaggedUsersStmt.executeQuery();
+					
+					while (uinf.next())
+					{
+						tp.addTaggedUser(new UserInfo(uinf.getLong(1), uinf.getString(2), uinf.getString(3)));
+					}
+					
+					this.photosWithMostTags.add(tp);
+				}
+				n--;
+			}
+		} catch (SQLException e) {
+			System.err.println(e.getMessage());
+			// can do more things here
+			
+			throw e;		
+		} finally {
+			// Close statement and result set
+			if(tinf != null) 
+				tinf.close();
+			if(pinf != null) 
+				pinf.close();
+			if(uinf != null) 
+				uinf.close();
+			
+			if(getTaggedPhotoIDsStmt != null)
+				getTaggedPhotoIDsStmt.close();
+			if(getPhotoInfoStmt != null)
+				getPhotoInfoStmt.close();
+			if(getTaggedUsersStmt != null)
+				getTaggedUsersStmt.close();
+		}
 	}
 
-	
 	
 	
 	@Override
