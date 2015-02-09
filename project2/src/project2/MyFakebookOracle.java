@@ -448,8 +448,39 @@ public class MyFakebookOracle extends FakebookOracle {
 	// on the same day, then assume that the one with the larger user_id is older
 	//
 	public void findAgeInfo(Long user_id) throws SQLException {
-		this.oldestFriend = new UserInfo(1L, "Oliver", "Oldham");
-		this.youngestFriend = new UserInfo(25L, "Yolanda", "Young");
+		/* Catherine did this query */
+		ResultSet rst = null;
+		PreparedStatement getFriendsStmt = null;
+	
+		try {
+			String getFriendsSql = "select USER_ID, FIRST_NAME, LAST_NAME, YEAR_OF_BIRTH, MONTH_OF_BIRTH, DAY_OF_BIRTH from " + userTableName +
+					" where USER_ID in (select USER2_ID from " + friendsTableName +
+										" where USER1_ID = " + user_id + " union select USER1_ID from " + friendsTableName + 
+										" where USER2_ID = " + user_id + ")" +
+					" order by YEAR_OF_BIRTH asc, MONTH_OF_BIRTH asc, DAY_OF_BIRTH asc, USER_ID desc";
+			getFriendsStmt = oracleConnection.prepareStatement(getFriendsSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+			rst = getFriendsStmt.executeQuery();
+			
+			while (rst.next()) {
+				if (rst.isFirst())
+					this.oldestFriend = new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3));
+				if (rst.isLast())
+					this.youngestFriend = new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3));
+			}
+			
+		} catch (SQLException e) {
+			System.err.println(e.getMessage());
+			// can do more things here
+			
+			throw e;		
+		} finally {
+			// Close statement and result set
+			if(rst != null) 
+				rst.close();
+			
+			if(getFriendsStmt != null)
+				getFriendsStmt.close();
+		}
 	}
 	
 	
