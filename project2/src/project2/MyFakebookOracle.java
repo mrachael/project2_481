@@ -576,7 +576,7 @@ public class MyFakebookOracle extends FakebookOracle {
 			String getPotentialSibsSql = "select A.USER_ID, A.FIRST_NAME, A.LAST_NAME, B.USER_ID, B.FIRST_NAME, B.LAST_NAME from "
 					+ userTableName + " A, " + userTableName + " B, " + friendsTableName + ", " + hometownCityTableName + " C, " + hometownCityTableName + 
 					" D where (A.USER_ID = USER1_ID and B.USER_ID = USER2_ID" + " or A.USER_ID = USER2_ID and B.USER_ID = USER1_ID)" +
-					" and (A.YEAR_OF_BIRTH - B.YEAR_OF_BIRTH < 10) and (A.LAST_NAME = B.LAST_NAME) and (A.USER_ID = C.USER_ID and B.USER_ID = D.USER_ID and" +
+					" and ABS(A.YEAR_OF_BIRTH - B.YEAR_OF_BIRTH) < 10 and (A.LAST_NAME = B.LAST_NAME) and (A.USER_ID = C.USER_ID and B.USER_ID = D.USER_ID and" +
 					" C.HOMETOWN_CITY_ID = D.HOMETOWN_CITY_ID) order by A.USER_ID asc, B.USER_ID asc";
 			getPotentialSibsStmt = oracleConnection.prepareStatement(getPotentialSibsSql,  ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
 			rst = getPotentialSibsStmt.executeQuery();
