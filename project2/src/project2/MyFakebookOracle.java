@@ -568,14 +568,37 @@ public class MyFakebookOracle extends FakebookOracle {
 	//  
 	//
 	public void findPotentialSiblings() throws SQLException {
-		Long user1_id = 123L;
-		String user1FirstName = "Friend1FirstName";
-		String user1LastName = "Friend1LastName";
-		Long user2_id = 456L;
-		String user2FirstName = "Friend2FirstName";
-		String user2LastName = "Friend2LastName";
-		SiblingInfo s = new SiblingInfo(user1_id, user1FirstName, user1LastName, user2_id, user2FirstName, user2LastName);
-		this.siblings.add(s);
+		/* Catherine did this query */
+		ResultSet rst = null;
+		PreparedStatement getPotentialSibsStmt = null;
+		
+		try {
+			String getPotentialSibsSql = "select A.USER_ID, A.FIRST_NAME, A.LAST_NAME, B.USER_ID, B.FIRST_NAME, B.LAST_NAME from "
+					+ userTableName + " A, " + userTableName + " B, " + friendsTableName + ", " + hometownCityTableName + " C, " + hometownCityTableName + 
+					" D where (A.USER_ID = USER1_ID and B.USER_ID = USER2_ID" + " or A.USER_ID = USER2_ID and B.USER_ID = USER1_ID)" +
+					" and (A.YEAR_OF_BIRTH - B.YEAR_OF_BIRTH < 10) and (A.LAST_NAME = B.LAST_NAME) and (A.USER_ID = C.USER_ID and B.USER_ID = D.USER_ID and" +
+					" C.HOMETOWN_CITY_ID = D.HOMETOWN_CITY_ID) order by A.USER_ID asc, B.USER_ID asc";
+			getPotentialSibsStmt = oracleConnection.prepareStatement(getPotentialSibsSql,  ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+			rst = getPotentialSibsStmt.executeQuery();
+			
+			while (rst.next()) {
+				SiblingInfo s = new SiblingInfo(rst.getLong(1), rst.getString(2), rst.getString(3), rst.getLong(4), rst.getString(5), rst.getString(6));
+				this.siblings.add(s);
+			}
+			
+		} catch (SQLException e) {
+			System.err.println(e.getMessage());
+			// can do more things here
+			
+			throw e;		
+		} finally {
+			// Close statement and result set
+			if(rst != null) 
+				rst.close();
+			
+			if(getPotentialSibsStmt != null)
+				getPotentialSibsStmt.close();
+		}
 	}
 	
 }
