@@ -315,8 +315,38 @@ public class MyFakebookOracle extends FakebookOracle {
 	// (I.e., current_city = hometown_city)
 	//	
 	public void liveAtHome() throws SQLException {
-		this.liveAtHome.add(new UserInfo(11L, "Heather", "Hometowngirl"));
-		this.countLiveAtHome = 1;
+		/* Catherine did this query */
+		ResultSet rst = null;
+		PreparedStatement getLiveAtHomeStmt = null;
+		
+		try {
+			String getLiveAtHomeSql = "select U.USER_ID, FIRST_NAME, LAST_NAME from " + userTableName + 
+					" U, " + currentCityTableName + " C, " + hometownCityTableName + " H" +
+					" where CURRENT_CITY_ID = HOMETOWN_CITY_ID and U.USER_ID = C.USER_ID and U.USER_ID = H.USER_ID";
+			getLiveAtHomeStmt = oracleConnection.prepareStatement(getLiveAtHomeSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+			rst = getLiveAtHomeStmt.executeQuery();
+			
+			int count = 0;
+			while (rst.next()) {
+				count++;
+				UserInfo u = new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3));
+				this.liveAtHome.add(u);
+			}
+			this.countLiveAtHome = count;
+			
+		} catch (SQLException e) {
+			System.err.println(e.getMessage());
+			// can do more things here
+			
+			throw e;		
+		} finally {
+			// Close statement and result set
+			if(rst != null) 
+				rst.close();
+			
+			if(getLiveAtHomeStmt != null)
+				getLiveAtHomeStmt.close();
+		}
 	}
 
 
