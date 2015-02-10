@@ -443,6 +443,36 @@ public class MyFakebookOracle extends FakebookOracle {
 	// (iii) If there are still ties, choose the pair with the smaller user_id for the male
 	//
 	public void matchMaker(int n, int yearDiff) throws SQLException { 
+		/* Catherine did this query */
+		ResultSet rst = null;
+		PreparedStatement getMatchesStmt = null;
+		
+		try {
+			String getMatchesSql = "select PHOTO_ID, P.ALBUM_ID, ALBUM_NAME, PHOTO_CAPTION, PHOTO_LINK, X.USER_ID, X.FIRST_NAME, X.LAST_NAME, Y.USER_ID, Y.FIRST_NAME, Y.LAST_NAME from " 
+					+ photoTableName + " P, " + albumTableName + " L, " + tagTableName + " S, " + tagTableName + " T, " + userTableName + " X, " + userTableName 
+					+ " Y where X.USER_ID = S.TAG_SUBJECT_ID and Y.USER_ID = T.TAG_SUBJECT_ID and P.PHOTO_ID = S.TAG_PHOTO_ID and S.TAG_PHOTO_ID = T.TAG_PHOTO_ID"
+					+ " and X.USER_ID in (select A.USER_ID from " + userTableName + " A, " + userTableName + " B where (A.USER_ID < B.USER_ID and not exists" +
+					" (select USER1_ID, USER2_ID from " + friendsTableName + " where USER1_ID = A.USER_ID and USER2_ID = B.USER_ID))) and Y.USER_ID in" +
+					" (select A.USER_ID from " + userTableName + " A, " + userTableName + " B where (A.USER_ID < B.USER_ID and not exists" +
+					" (select USER1_ID, USER2_ID from " + friendsTableName + " where USER1_ID = A.USER_ID and USER2_ID = B.USER_ID))) and X.GENDER <> Y.GENDER"
+					+ " and ABS(X.YEAR_OF_BIRTH - Y.YEAR_OF_BIRTH) <= " + yearDiff;
+			getMatchesStmt = oracleConnection.prepareStatement(getMatchesSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+			rst = getMatchesStmt.executeQuery();
+					
+		} catch (SQLException e) {
+			System.err.println(e.getMessage());
+			// can do more things here
+			
+			throw e;		
+		} finally {
+			// Close statement and result set
+			if(rst != null) 
+				rst.close();
+			
+			if(getMatchesStmt != null)
+				getMatchesStmt.close();
+		}
+
 		Long girlUserId = 123L;
 		String girlFirstName = "girlFirstName";
 		String girlLastName = "girlLastName";
