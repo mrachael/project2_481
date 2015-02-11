@@ -3,14 +3,6 @@ package project2;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.Vector;
 import java.sql.PreparedStatement;
 
 public class MyFakebookOracle extends FakebookOracle {
@@ -165,38 +157,33 @@ public class MyFakebookOracle extends FakebookOracle {
 	// (3) The most common last name, and the number of times it appears (if there is a tie, include all in result)
 	//
 	public void findNameInfo() throws SQLException { // Query1
-        // Find the following information from your database and store the information as shown
-		/* Catherine did this query */
+       /* Catherine did this query */
 		ResultSet rst = null;
 		PreparedStatement getNamesStmt = null;
 		PreparedStatement getLongestStmt = null;
 		PreparedStatement getShortestStmt = null;
-		PreparedStatement getCommonStmt = null;
-		Map<String, Integer> names = new TreeMap<String, Integer>();
 		
 		try {
-			String getCommonSql = "select distinct LAST_NAME from " + userTableName;
-			getCommonStmt = oracleConnection.prepareStatement(getCommonSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-			rst = getCommonStmt.executeQuery();
-			while (rst.next())
-				names.put(rst.getString(1), 0);
-			
-			String getNamesSql = "select LAST_NAME from " + userTableName +
-				" order by length(LAST_NAME) DESC";
+			String getNamesSql = "select LAST_NAME, COUNT(*) from " + userTableName +
+				" group by LAST_NAME order by COUNT(*) desc, length(LAST_NAME) desc" ;
 			getNamesStmt = oracleConnection.prepareStatement(getNamesSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
 			rst = getNamesStmt.executeQuery();
 			
 			int longest = 0;
+			int common = 0;
 			while(rst.next()) {
 				int length = rst.getString(1).length();
-				int count = names.get(rst.getString(1)).intValue();
 				if (rst.isFirst()) {
 					longest = length;
+					common = rst.getInt(2);
 					this.longestLastNames.add(rst.getString(1));
+					this.mostCommonLastNames.add(rst.getString(1));
+					this.mostCommonLastNamesCount = common;
 				}	
 				else if (length == longest)
 					this.longestLastNames.add(rst.getString(1));
-				names.put(rst.getString(1), count+1);
+				if (rst.getInt(2) == common)
+					this.mostCommonLastNames.add(rst.getString(1));
 			}
 			
 			int shortest = 0;
@@ -209,23 +196,6 @@ public class MyFakebookOracle extends FakebookOracle {
 				}
 				else if (length == shortest)
 					this.shortestLastNames.add(rst.getString(1));
-			}
-			
-			int max = 0;
-			Collection<Integer> c = names.values();
-			Iterator<Integer> citr = c.iterator();
-			while (citr.hasNext()) {
-				int compare = citr.next().intValue();
-				if (compare > max)
-					max = compare;
-			}
-			this.mostCommonLastNamesCount = max;
-			
-			Set<String> s = names.keySet();
-			Iterator<String> sitr = s.iterator();
-			while (sitr.hasNext()) {
-				if (names.get(sitr.next()).intValue() == max)
-					this.mostCommonLastNames.add(sitr.next());
 			}
 			
 		} catch (SQLException e) {
@@ -246,9 +216,6 @@ public class MyFakebookOracle extends FakebookOracle {
 			
 			if(getShortestStmt != null)
 				getShortestStmt.close();
-			
-			if(getCommonStmt != null)
-				getCommonStmt.close();
 		}
 	}
 	
