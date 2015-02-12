@@ -55,7 +55,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		tagTableName = prefix+dataType+"_TAGS";
 	}
 	
-	
+	/*Done*/ 
 	@Override
 	// ***** Query 0 *****
 	// This query is given to your for free;
@@ -154,9 +154,8 @@ public class MyFakebookOracle extends FakebookOracle {
 				getNamesLeastMonthStmt.close();
 		}
 	}
-
 	
-	
+	/*Done*/ 
 	@Override
 	// ***** Query 1 *****
 	// Find information about friend names:
@@ -252,6 +251,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		}
 	}
 	
+	/*Done*/ 
 	@Override
 	// ***** Query 2 *****
 	// Find the user(s) who have strictly more than 80 friends in the network
@@ -308,7 +308,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		}
 	}
 
-
+	/*Done*/ 
 	@Override
 	// ***** Query 3 *****
 	// Find the users who still live in their hometowns
@@ -349,8 +349,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		}
 	}
 
-
-
+	/*Done*/ 
 	@Override
 	// **** Query 4 ****
 	// Find the top-n photos based on the number of tagged users
@@ -427,7 +426,6 @@ public class MyFakebookOracle extends FakebookOracle {
 	}
 
 	
-	
 	@Override
 	// **** Query 5 ****
 	// Find suggested "match pairs" of friends, using the following criteria:
@@ -464,7 +462,7 @@ public class MyFakebookOracle extends FakebookOracle {
 	}
 
 	
-	
+	@Override
 	// **** Query 6 ****
 	// Suggest friends based on mutual friends
 	// 
@@ -478,7 +476,6 @@ public class MyFakebookOracle extends FakebookOracle {
 	// If there are ties, you should give priority to the pair with the smaller user1_id.
 	// If there are still ties, give priority to the pair with the smaller user2_id.
 	//
-	@Override
 	public void suggestFriendsByMutualFriends(int n) throws SQLException {
 		Long user1_id = 123L;
 		String user1FirstName = "Friend1FirstName";
@@ -494,8 +491,8 @@ public class MyFakebookOracle extends FakebookOracle {
 		this.suggestedFriendsPairs.add(p);
 	}
 	
-	
-	//@Override
+	/*Done*/ 
+	@Override
 	// ***** Query 7 *****
 	// Given the ID of a user, find information about that
 	// user's oldest friend and youngest friend
@@ -547,13 +544,54 @@ public class MyFakebookOracle extends FakebookOracle {
 	// events in that city.  If there is a tie, return the names of all of the (tied) cities.
 	//
 	public void findEventCities() throws SQLException {
-		this.eventCount = 12;
-		this.popularCityNames.add("Ann Arbor");
-		this.popularCityNames.add("Ypsilanti");
+		ResultSet einf = null; 
+		ResultSet cinf = null;
+		PreparedStatement getTopCityIdsStmt = null;
+		PreparedStatement getTopCityNameStmt = null;
+		
+		try {
+			String getTopCityIdsSql = "SELECT event_city_id, COUNT(*) FROM " + eventTableName + 
+			" GROUP BY event_city_id ORDER BY COUNT(*) DESC";
+
+			getTopCityIdsStmt = oracleConnection.prepareStatement(getTopCityIdsSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+			einf = getTopCityIdsStmt.executeQuery();
+			
+			
+			//if (!einf.next())
+				//return;
+			for (int i = 0; i < 3; i++)
+				einf.next();
+			do {
+				this.eventCount = einf.getInt(2);
+				String id = einf.getString(1);
+				String getTopCityNameSql = "SELECT city_name FROM " + cityTableName + " WHERE city_id = ?";
+				getTopCityNameStmt = oracleConnection.prepareStatement(getTopCityNameSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+				getTopCityNameStmt.setString(1,  einf.getString(1));
+				cinf = getTopCityNameStmt.executeQuery();
+				
+				while (cinf.next())
+					this.popularCityNames.add(cinf.getString(1));
+				
+			} while(einf.next() && einf.getInt(2) == this.eventCount);
+		} catch (SQLException e) {
+			System.err.println(e.getMessage());
+			// can do more things here
+			
+			throw e;		
+		} finally {
+			// Close statement and result set
+			if(einf != null) 
+				einf.close();
+			if(cinf != null) 
+				cinf.close();
+			if(getTopCityIdsStmt != null)
+				getTopCityIdsStmt.close();
+			if(getTopCityNameStmt != null)
+				getTopCityNameStmt.close();
+		}
 	}
 	
-	
-	
+	/*Done*/ 
 	@Override
 //	 ***** Query 9 *****
 	//
