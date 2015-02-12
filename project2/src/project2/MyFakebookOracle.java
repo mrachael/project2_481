@@ -47,7 +47,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		tagTableName = prefix+dataType+"_TAGS";
 	}
 	
-	
+	/*Done*/ 
 	@Override
 	// ***** Query 0 *****
 	// This query is given to your for free;
@@ -146,9 +146,8 @@ public class MyFakebookOracle extends FakebookOracle {
 				getNamesLeastMonthStmt.close();
 		}
 	}
-
 	
-	
+	/*Done*/ 
 	@Override
 	// ***** Query 1 *****
 	// Find information about friend names:
@@ -219,6 +218,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		}
 	}
 	
+	/*Done*/ 
 	@Override
 	// ***** Query 2 *****
 	// Find the user(s) who have strictly more than 80 friends in the network
@@ -275,7 +275,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		}
 	}
 
-
+	/*Done*/ 
 	@Override
 	// ***** Query 3 *****
 	// Find the users who still live in their hometowns
@@ -316,6 +316,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		}
 	}
 
+	/*Done*/ 
 	@Override
 	// **** Query 4 ****
 	// Find the top-n photos based on the number of tagged users
@@ -392,7 +393,6 @@ public class MyFakebookOracle extends FakebookOracle {
 	}
 
 	
-	
 	@Override
 	// **** Query 5 ****
 	// Find suggested "match pairs" of friends, using the following criteria:
@@ -410,42 +410,19 @@ public class MyFakebookOracle extends FakebookOracle {
 	public void matchMaker(int n, int yearDiff) throws SQLException { 
 		/* Catherine did this query */
 		ResultSet rst = null;
-		ResultSet rstTag = null;
 		PreparedStatement getMatchesStmt = null;
-		PreparedStatement getTaggedMatchesStmt = null;
 		
 		try {
-			String getMatchesSql = "select A.USER_ID, A.FIRST_NAME, A.LAST_NAME, A.YEAR_OF_BIRTH, B.USER_ID, B.FIRST_NAME, B.LAST_NAME, B.YEAR_OF_BIRTH from " 
-					+ userTableName + " A, " + userTableName + " B, " + tagTableName + " S, " + tagTableName + " T"
-					+ " where not exists (select USER1_ID, USER2_ID from " + friendsTableName + " where (A.USER_ID < B.USER_ID and A.USER_ID = USER1_ID and B.USER_ID = USER2_ID))"
-					+ " and (A.GENDER = 'female' and B.GENDER = 'male') and (ABS(A.YEAR_OF_BIRTH - B.YEAR_OF_BIRTH) <= ?"
-					+ ") and (A.USER_ID = S.TAG_SUBJECT_ID and B.USER_ID = T.TAG_SUBJECT_ID and S.TAG_PHOTO_ID = T.TAG_PHOTO_ID)"
-					+ " order by A.USER_ID asc, B.USER_ID desc";
+			String getMatchesSql = "select PHOTO_ID, P.ALBUM_ID, ALBUM_NAME, PHOTO_CAPTION, PHOTO_LINK, X.USER_ID, X.FIRST_NAME, X.LAST_NAME, Y.USER_ID, Y.FIRST_NAME, Y.LAST_NAME from " 
+					+ photoTableName + " P, " + albumTableName + " L, " + tagTableName + " S, " + tagTableName + " T, " + userTableName + " X, " + userTableName 
+					+ " Y where X.USER_ID = S.TAG_SUBJECT_ID and Y.USER_ID = T.TAG_SUBJECT_ID and P.PHOTO_ID = S.TAG_PHOTO_ID and S.TAG_PHOTO_ID = T.TAG_PHOTO_ID"
+					+ " and X.USER_ID in (select A.USER_ID from " + userTableName + " A, " + userTableName + " B where (A.USER_ID < B.USER_ID and not exists" +
+					" (select USER1_ID, USER2_ID from " + friendsTableName + " where USER1_ID = A.USER_ID and USER2_ID = B.USER_ID))) and Y.USER_ID in" +
+					" (select A.USER_ID from " + userTableName + " A, " + userTableName + " B where (A.USER_ID < B.USER_ID and not exists" +
+					" (select USER1_ID, USER2_ID from " + friendsTableName + " where USER1_ID = A.USER_ID and USER2_ID = B.USER_ID))) and X.GENDER <> Y.GENDER"
+					+ " and ABS(X.YEAR_OF_BIRTH - Y.YEAR_OF_BIRTH) <= " + yearDiff;
 			getMatchesStmt = oracleConnection.prepareStatement(getMatchesSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-			getMatchesStmt.setInt(1, yearDiff);
 			rst = getMatchesStmt.executeQuery();
-			
-			while (rst.next()) {
-				long userA = rst.getLong(1);
-				long userB = rst.getLong(5);
-				MatchPair mp = new MatchPair(userA, rst.getString(2), rst.getString(3), 
-						rst.getInt(4), userB, rst.getString(6), rst.getString(7), rst.getInt(8));
-				
-				String getTaggedMatchesSql = "select PHOTO_ID, P.ALBUM_ID, ALBUM_NAME, PHOTO_CAPTION, PHOTO_LINK from " + photoTableName
-						+ " P, " + albumTableName + " A, " + tagTableName + " S, " + tagTableName + " T" 
-						+ " where (P.ALBUM_ID = A.ALBUM_ID) and (S.TAG_PHOTO_ID = T.TAG_PHOTO_ID and S.TAG_PHOTO_ID = P.PHOTO_ID)"
-						+ " and (S.TAG_SUBJECT_ID = ? and T.TAG_SUBJECT_ID = ?)";
-				getTaggedMatchesStmt = oracleConnection.prepareStatement(getTaggedMatchesSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-				getTaggedMatchesStmt.setLong(1, userA);
-				getTaggedMatchesStmt.setLong(2, userB);
-				rstTag = getTaggedMatchesStmt.executeQuery();
-				
-				while (rstTag.next()) {
-					mp.addSharedPhoto(new PhotoInfo(rst.getString(1), rst.getString(2), 
-							rst.getString(3), rst.getString(4),rst.getString(5)));
-				}
-				this.bestMatches.add(mp);
-			}
 					
 		} catch (SQLException e) {
 			System.err.println(e.getMessage());
@@ -459,14 +436,30 @@ public class MyFakebookOracle extends FakebookOracle {
 			
 			if(getMatchesStmt != null)
 				getMatchesStmt.close();
-			
-			if(getTaggedMatchesStmt != null)
-				getTaggedMatchesStmt.close();
 		}
+
+		Long girlUserId = 123L;
+		String girlFirstName = "girlFirstName";
+		String girlLastName = "girlLastName";
+		int girlYear = 1988;
+		Long boyUserId = 456L;
+		String boyFirstName = "boyFirstName";
+		String boyLastName = "boyLastName";
+		int boyYear = 1986;
+		MatchPair mp = new MatchPair(girlUserId, girlFirstName, girlLastName, 
+				girlYear, boyUserId, boyFirstName, boyLastName, boyYear);
+		String sharedPhotoId = "12345678";
+		String sharedPhotoAlbumId = "123456789";
+		String sharedPhotoAlbumName = "albumName";
+		String sharedPhotoCaption = "caption";
+		String sharedPhotoLink = "link";
+		mp.addSharedPhoto(new PhotoInfo(sharedPhotoId, sharedPhotoAlbumId, 
+				sharedPhotoAlbumName, sharedPhotoCaption, sharedPhotoLink));
+		this.bestMatches.add(mp);
 	}
 
 	
-	
+	@Override
 	// **** Query 6 ****
 	// Suggest friends based on mutual friends
 	// 
@@ -480,7 +473,6 @@ public class MyFakebookOracle extends FakebookOracle {
 	// If there are ties, you should give priority to the pair with the smaller user1_id.
 	// If there are still ties, give priority to the pair with the smaller user2_id.
 	//
-	@Override
 	public void suggestFriendsByMutualFriends(int n) throws SQLException {
 		Long user1_id = 123L;
 		String user1FirstName = "Friend1FirstName";
@@ -496,8 +488,8 @@ public class MyFakebookOracle extends FakebookOracle {
 		this.suggestedFriendsPairs.add(p);
 	}
 	
-	
-	//@Override
+	/*Done*/ 
+	@Override
 	// ***** Query 7 *****
 	// Given the ID of a user, find information about that
 	// user's oldest friend and youngest friend
@@ -513,12 +505,10 @@ public class MyFakebookOracle extends FakebookOracle {
 		try {
 			String getFriendsSql = "select USER_ID, FIRST_NAME, LAST_NAME, YEAR_OF_BIRTH, MONTH_OF_BIRTH, DAY_OF_BIRTH from " + userTableName +
 					" where USER_ID in (select USER2_ID from " + friendsTableName +
-										" where USER1_ID = ? union select USER1_ID from " + friendsTableName + 
-										" where USER2_ID = ?)" +
+										" where USER1_ID = " + user_id + " union select USER1_ID from " + friendsTableName + 
+										" where USER2_ID = " + user_id + ")" +
 					" order by YEAR_OF_BIRTH asc, MONTH_OF_BIRTH asc, DAY_OF_BIRTH asc, USER_ID desc";
 			getFriendsStmt = oracleConnection.prepareStatement(getFriendsSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-			getFriendsStmt.setLong(1, user_id);
-			getFriendsStmt.setLong(2, user_id);
 			rst = getFriendsStmt.executeQuery();
 			
 			while (rst.next()) {
@@ -551,13 +541,53 @@ public class MyFakebookOracle extends FakebookOracle {
 	// events in that city.  If there is a tie, return the names of all of the (tied) cities.
 	//
 	public void findEventCities() throws SQLException {
-		this.eventCount = 12;
-		this.popularCityNames.add("Ann Arbor");
-		this.popularCityNames.add("Ypsilanti");
+		ResultSet einf = null; 
+		ResultSet cinf = null;
+		PreparedStatement getTopCityIdsStmt = null;
+		PreparedStatement getTopCityNameStmt = null;
+		
+		try {
+			String getTopCityIdsSql = "SELECT event_city_id, COUNT(*) FROM " + eventTableName + 
+			" GROUP BY event_city_id ORDER BY COUNT(*) DESC";
+
+			getTopCityIdsStmt = oracleConnection.prepareStatement(getTopCityIdsSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+			einf = getTopCityIdsStmt.executeQuery();
+			
+			
+			if (!einf.next())
+				return;
+			
+			do {
+				this.eventCount = einf.getInt(2);
+				String id = einf.getString(1);
+				String getTopCityNameSql = "SELECT city_name FROM " + cityTableName + " WHERE city_id = ?";
+				getTopCityNameStmt = oracleConnection.prepareStatement(getTopCityNameSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+				getTopCityNameStmt.setString(1,  einf.getString(1));
+				cinf = getTopCityNameStmt.executeQuery();
+				
+				while (cinf.next())
+					this.popularCityNames.add(cinf.getString(1));
+				
+			} while(einf.next() && einf.getInt(2) == this.eventCount);
+		} catch (SQLException e) {
+			System.err.println(e.getMessage());
+			// can do more things here
+			
+			throw e;		
+		} finally {
+			// Close statement and result set
+			if(einf != null) 
+				einf.close();
+			if(cinf != null) 
+				cinf.close();
+			if(getTopCityIdsStmt != null)
+				getTopCityIdsStmt.close();
+			if(getTopCityNameStmt != null)
+				getTopCityNameStmt.close();
+		}
 	}
 	
-	
-	
+	/*Done*/ 
 	@Override
 //	 ***** Query 9 *****
 	//
