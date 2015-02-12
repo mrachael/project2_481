@@ -3,14 +3,6 @@ package project2;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.Vector;
 import java.sql.PreparedStatement;
 
 public class MyFakebookOracle extends FakebookOracle {
@@ -164,38 +156,33 @@ public class MyFakebookOracle extends FakebookOracle {
 	// (3) The most common last name, and the number of times it appears (if there is a tie, include all in result)
 	//
 	public void findNameInfo() throws SQLException { // Query1
-        // Find the following information from your database and store the information as shown
-		/* Catherine did this query */
+       /* Catherine did this query */
 		ResultSet rst = null;
 		PreparedStatement getNamesStmt = null;
 		PreparedStatement getLongestStmt = null;
 		PreparedStatement getShortestStmt = null;
-		PreparedStatement getCommonStmt = null;
-		Map<String, Integer> names = new TreeMap<String, Integer>();
 		
 		try {
-			String getCommonSql = "select distinct LAST_NAME from " + userTableName;
-			getCommonStmt = oracleConnection.prepareStatement(getCommonSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-			rst = getCommonStmt.executeQuery();
-			while (rst.next())
-				names.put(rst.getString(1), 0);
-			
-			String getNamesSql = "select LAST_NAME from " + userTableName +
-				" order by length(LAST_NAME) DESC";
+			String getNamesSql = "select LAST_NAME, COUNT(*) from " + userTableName +
+				" group by LAST_NAME order by COUNT(*) desc, length(LAST_NAME) desc" ;
 			getNamesStmt = oracleConnection.prepareStatement(getNamesSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
 			rst = getNamesStmt.executeQuery();
 			
 			int longest = 0;
+			int common = 0;
 			while(rst.next()) {
 				int length = rst.getString(1).length();
-				int count = names.get(rst.getString(1)).intValue();
 				if (rst.isFirst()) {
 					longest = length;
+					common = rst.getInt(2);
 					this.longestLastNames.add(rst.getString(1));
+					this.mostCommonLastNames.add(rst.getString(1));
+					this.mostCommonLastNamesCount = common;
 				}	
 				else if (length == longest)
 					this.longestLastNames.add(rst.getString(1));
-				names.put(rst.getString(1), count+1);
+				if (rst.getInt(2) == common)
+					this.mostCommonLastNames.add(rst.getString(1));
 			}
 			
 			int shortest = 0;
@@ -208,23 +195,6 @@ public class MyFakebookOracle extends FakebookOracle {
 				}
 				else if (length == shortest)
 					this.shortestLastNames.add(rst.getString(1));
-			}
-			
-			int max = 0;
-			Collection<Integer> c = names.values();
-			Iterator<Integer> citr = c.iterator();
-			while (citr.hasNext()) {
-				int compare = citr.next().intValue();
-				if (compare > max)
-					max = compare;
-			}
-			this.mostCommonLastNamesCount = max;
-			
-			Set<String> s = names.keySet();
-			Iterator<String> sitr = s.iterator();
-			while (sitr.hasNext()) {
-				if (names.get(sitr.next()).intValue() == max)
-					this.mostCommonLastNames.add(sitr.next());
 			}
 			
 		} catch (SQLException e) {
@@ -245,9 +215,6 @@ public class MyFakebookOracle extends FakebookOracle {
 			
 			if(getShortestStmt != null)
 				getShortestStmt.close();
-			
-			if(getCommonStmt != null)
-				getCommonStmt.close();
 		}
 	}
 	
@@ -441,6 +408,36 @@ public class MyFakebookOracle extends FakebookOracle {
 	// (iii) If there are still ties, choose the pair with the smaller user_id for the male
 	//
 	public void matchMaker(int n, int yearDiff) throws SQLException { 
+		/* Catherine did this query */
+		ResultSet rst = null;
+		PreparedStatement getMatchesStmt = null;
+		
+		try {
+			String getMatchesSql = "select PHOTO_ID, P.ALBUM_ID, ALBUM_NAME, PHOTO_CAPTION, PHOTO_LINK, X.USER_ID, X.FIRST_NAME, X.LAST_NAME, Y.USER_ID, Y.FIRST_NAME, Y.LAST_NAME from " 
+					+ photoTableName + " P, " + albumTableName + " L, " + tagTableName + " S, " + tagTableName + " T, " + userTableName + " X, " + userTableName 
+					+ " Y where X.USER_ID = S.TAG_SUBJECT_ID and Y.USER_ID = T.TAG_SUBJECT_ID and P.PHOTO_ID = S.TAG_PHOTO_ID and S.TAG_PHOTO_ID = T.TAG_PHOTO_ID"
+					+ " and X.USER_ID in (select A.USER_ID from " + userTableName + " A, " + userTableName + " B where (A.USER_ID < B.USER_ID and not exists" +
+					" (select USER1_ID, USER2_ID from " + friendsTableName + " where USER1_ID = A.USER_ID and USER2_ID = B.USER_ID))) and Y.USER_ID in" +
+					" (select A.USER_ID from " + userTableName + " A, " + userTableName + " B where (A.USER_ID < B.USER_ID and not exists" +
+					" (select USER1_ID, USER2_ID from " + friendsTableName + " where USER1_ID = A.USER_ID and USER2_ID = B.USER_ID))) and X.GENDER <> Y.GENDER"
+					+ " and ABS(X.YEAR_OF_BIRTH - Y.YEAR_OF_BIRTH) <= " + yearDiff;
+			getMatchesStmt = oracleConnection.prepareStatement(getMatchesSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+			rst = getMatchesStmt.executeQuery();
+					
+		} catch (SQLException e) {
+			System.err.println(e.getMessage());
+			// can do more things here
+			
+			throw e;		
+		} finally {
+			// Close statement and result set
+			if(rst != null) 
+				rst.close();
+			
+			if(getMatchesStmt != null)
+				getMatchesStmt.close();
+		}
+
 		Long girlUserId = 123L;
 		String girlFirstName = "girlFirstName";
 		String girlLastName = "girlLastName";
@@ -606,14 +603,37 @@ public class MyFakebookOracle extends FakebookOracle {
 	//  
 	//
 	public void findPotentialSiblings() throws SQLException {
-		Long user1_id = 123L;
-		String user1FirstName = "Friend1FirstName";
-		String user1LastName = "Friend1LastName";
-		Long user2_id = 456L;
-		String user2FirstName = "Friend2FirstName";
-		String user2LastName = "Friend2LastName";
-		SiblingInfo s = new SiblingInfo(user1_id, user1FirstName, user1LastName, user2_id, user2FirstName, user2LastName);
-		this.siblings.add(s);
+		/* Catherine did this query */
+		ResultSet rst = null;
+		PreparedStatement getPotentialSibsStmt = null;
+		
+		try {
+			String getPotentialSibsSql = "select A.USER_ID, A.FIRST_NAME, A.LAST_NAME, B.USER_ID, B.FIRST_NAME, B.LAST_NAME from "
+					+ userTableName + " A, " + userTableName + " B, " + friendsTableName + ", " + hometownCityTableName + " C, " + hometownCityTableName + 
+					" D where (A.USER_ID < B.USER_ID and A.USER_ID = USER1_ID and B.USER_ID = USER2_ID)"  +
+					" and ABS(A.YEAR_OF_BIRTH - B.YEAR_OF_BIRTH) < 10 and (A.LAST_NAME = B.LAST_NAME) and (A.USER_ID = C.USER_ID and B.USER_ID = D.USER_ID and" +
+					" C.HOMETOWN_CITY_ID = D.HOMETOWN_CITY_ID) order by A.USER_ID asc, B.USER_ID asc";
+			getPotentialSibsStmt = oracleConnection.prepareStatement(getPotentialSibsSql,  ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+			rst = getPotentialSibsStmt.executeQuery();
+			
+			while (rst.next()) {
+				SiblingInfo s = new SiblingInfo(rst.getLong(1), rst.getString(2), rst.getString(3), rst.getLong(4), rst.getString(5), rst.getString(6));
+				this.siblings.add(s);
+			}
+			
+		} catch (SQLException e) {
+			System.err.println(e.getMessage());
+			// can do more things here
+			
+			throw e;		
+		} finally {
+			// Close statement and result set
+			if(rst != null) 
+				rst.close();
+			
+			if(getPotentialSibsStmt != null)
+				getPotentialSibsStmt.close();
+		}
 	}
 	
 }
