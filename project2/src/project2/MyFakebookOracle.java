@@ -554,10 +554,9 @@ public class MyFakebookOracle extends FakebookOracle {
 			einf = getTopCityIdsStmt.executeQuery();
 			
 			
-			//if (!einf.next())
-				//return;
-			for (int i = 0; i < 3; i++)
-				einf.next();
+			if (!einf.next())
+				return;
+			
 			do {
 				this.eventCount = einf.getInt(2);
 				String id = einf.getString(1);
