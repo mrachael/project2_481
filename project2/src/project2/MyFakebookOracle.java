@@ -417,7 +417,8 @@ public class MyFakebookOracle extends FakebookOracle {
 		try {
 			String getMatchesSql = "select A.USER_ID, A.FIRST_NAME, A.LAST_NAME, A.YEAR_OF_BIRTH, B.USER_ID, B.FIRST_NAME, B.LAST_NAME, B.YEAR_OF_BIRTH from " 
 					+ userTableName + " A, " + userTableName + " B, " + tagTableName + " S, " + tagTableName + " T"
-					+ " where not exists (select USER1_ID, USER2_ID from " + friendsTableName + " where (A.USER_ID < B.USER_ID and A.USER_ID = USER1_ID and B.USER_ID = USER2_ID))"
+					+ " where not exists (select USER1_ID, USER2_ID from " + friendsTableName + " where (A.USER_ID = USER1_ID and B.USER_ID = USER2_ID))"
+					+ " and not exists (select USER1_ID, USER2_ID from " + friendsTableName + " where (A.USER_ID = USER2_ID and B.USER_ID = USER1_ID))"
 					+ " and (A.GENDER = 'female' and B.GENDER = 'male') and (ABS(A.YEAR_OF_BIRTH - B.YEAR_OF_BIRTH) <= ?"
 					+ ") and (A.USER_ID = S.TAG_SUBJECT_ID and B.USER_ID = T.TAG_SUBJECT_ID and S.TAG_PHOTO_ID = T.TAG_PHOTO_ID)"
 					+ " order by A.USER_ID asc, B.USER_ID desc";
