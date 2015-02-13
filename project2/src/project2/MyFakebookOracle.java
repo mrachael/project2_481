@@ -442,8 +442,8 @@ public class MyFakebookOracle extends FakebookOracle {
 				rstTag = getTaggedMatchesStmt.executeQuery();
 				
 				while (rstTag.next()) {
-					mp.addSharedPhoto(new PhotoInfo(rst.getString(1), rst.getString(2), 
-							rst.getString(3), rst.getString(4),rst.getString(5)));
+					mp.addSharedPhoto(new PhotoInfo(rstTag.getString(1), rstTag.getString(2), 
+							rstTag.getString(3), rstTag.getString(4),rstTag.getString(5)));
 				}
 				this.bestMatches.add(mp);
 			}
