@@ -476,18 +476,20 @@ public class MyFakebookOracle extends FakebookOracle {
 		PreparedStatement dropViewStmt = null;
 		
 		try {
+			//Find all users C who are friends with both A and B where A and B are not friends 
 			String makeViewSql = "create or replace view potentialpairs as ("
-					+ "select u1.first_name as a_fn, u1.last_name as a_ln, u2.first_name as b_fn, u2.last_name as b_ln, "
-					+ "u3.first_name as c_fn, u3.last_name as c_ln, u1.user_id as a_id, u2.user_id as b_id, u3.user_id as c_id "
-					+ " from " + userTableName + " u1, " + userTableName + " u2, " + userTableName + " u3, "
+					+ "select A.first_name as a_fn, A.last_name as a_ln, B.first_name as b_fn, B.last_name as b_ln, "
+					+ "C.first_name as c_fn, C.last_name as c_ln, A.user_id as a_id, B.user_id as b_id, C.user_id as c_id "
+					+ " from " + userTableName + " A, " + userTableName + " B, " + userTableName + " C, "
 							+ friendsTableName + " f1, " + friendsTableName + " f2 "
-					+ " where u1.user_id < u2.user_id AND "
+					+ " where A.user_id < B.user_id AND "
 					+ " not exists (select user1_id from " + friendsTableName + " fa "
-							+ " where u1.user_id = fa.user1_id and u2.user_id = fa.user2_id) "
-					+ " and ((u1.user_id = f1.user1_id and f1.user2_id = u3.user_id and u3.user_id = f2.user1_id and f2.user2_id = u2.user_id) or "
-					+ " (u1.user_id = f1.user1_id and f1.user2_id = u3.user_id and u3.user_id = f2.user2_id and f2.user1_id = u2.user_id) or "
-					+ " (u1.user_id = f1.user2_id and f1.user1_id = u3.user_id and u3.user_id = f2.user1_id and f2.user2_id = u2.user_id) or "
-					+ " (u1.user_id = f1.user2_id and f1.user1_id = u3.user_id and u3.user_id = f2.user2_id and f2.user1_id = u2.user_id))) ";
+							+ " where A.user_id = fa.user1_id and B.user_id = fa.user2_id) "
+					// Handle cases of friendship (AC)(BC), (AC)(CB), (AB)(BC), (AB)(CB)
+					+ " and ((A.user_id = f1.user1_id and f1.user2_id = C.user_id and C.user_id = f2.user1_id and f2.user2_id = B.user_id) or "
+					+ " (A.user_id = f1.user1_id and f1.user2_id = C.user_id and C.user_id = f2.user2_id and f2.user1_id = B.user_id) or "
+					+ " (A.user_id = f1.user2_id and f1.user1_id = C.user_id and C.user_id = f2.user1_id and f2.user2_id = B.user_id) or "
+					+ " (A.user_id = f1.user2_id and f1.user1_id = C.user_id and C.user_id = f2.user2_id and f2.user1_id = B.user_id))) ";
 			
 			makeViewStmt = oracleConnection.prepareStatement(makeViewSql);
 			
