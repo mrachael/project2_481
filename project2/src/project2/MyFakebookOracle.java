@@ -231,10 +231,6 @@ public class MyFakebookOracle extends FakebookOracle {
 	//Rachael did the thing
 	//Rachael also doesn't know how to push things
 	public void popularFriends() throws SQLException {
-		// Find the following information from your database and store the information as shown 
-		//this.popularFriends.add(new UserInfo(10L, "Billy", "SmellsFunny"));
-		//this.popularFriends.add(new UserInfo(11L, "Jenny", "BadBreath"));
-		//this.countPopularFriends = 2;
 		
 		ResultSet rst = null; 
 		PreparedStatement getPopularFriendsStmt = null;
@@ -249,10 +245,6 @@ public class MyFakebookOracle extends FakebookOracle {
 						+ "GROUP BY user1_id HAVING COUNT(*)>80)";
 			getPopularFriendsStmt = oracleConnection.prepareStatement(getPopularFriendsSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
 			
-			// getMonthCountSql is the query that will run
-			// For each month, find the number of friends born that month
-			// Sort them in descending order of count
-			// executeQuery will run the query and generate the result set
 			rst = getPopularFriendsStmt.executeQuery();
 			
 			this.countPopularFriends = 0;
