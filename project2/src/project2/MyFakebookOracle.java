@@ -164,25 +164,22 @@ public class MyFakebookOracle extends FakebookOracle {
 		
 		try {
 			String getNamesSql = "select LAST_NAME, COUNT(*) from " + userTableName +
-				" group by LAST_NAME order by COUNT(*) desc, length(LAST_NAME) desc" ;
+				" group by LAST_NAME order by length(LAST_NAME) desc, COUNT(*) desc" ;
 			getNamesStmt = oracleConnection.prepareStatement(getNamesSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
 			rst = getNamesStmt.executeQuery();
 			
 			int longest = 0;
 			int common = 0;
 			while(rst.next()) {
+				if (rst.getInt(2) > common)
+					common = rst.getInt(2);
 				int length = rst.getString(1).length();
 				if (rst.isFirst()) {
 					longest = length;
-					common = rst.getInt(2);
 					this.longestLastNames.add(rst.getString(1));
-					this.mostCommonLastNames.add(rst.getString(1));
-					this.mostCommonLastNamesCount = common;
 				}	
 				else if (length == longest)
 					this.longestLastNames.add(rst.getString(1));
-				if (rst.getInt(2) == common)
-					this.mostCommonLastNames.add(rst.getString(1));
 			}
 			
 			int shortest = 0;
@@ -196,6 +193,12 @@ public class MyFakebookOracle extends FakebookOracle {
 				else if (length == shortest)
 					this.shortestLastNames.add(rst.getString(1));
 			}
+			
+			while (rst.next()) {
+				if (rst.getInt(2) == common)
+					this.mostCommonLastNames.add(rst.getString(1));
+			}
+			this.mostCommonLastNamesCount = common;
 			
 		} catch (SQLException e) {
 			System.err.println(e.getMessage());
@@ -442,8 +445,8 @@ public class MyFakebookOracle extends FakebookOracle {
 				rstTag = getTaggedMatchesStmt.executeQuery();
 				
 				while (rstTag.next()) {
-					mp.addSharedPhoto(new PhotoInfo(rst.getString(1), rst.getString(2), 
-							rst.getString(3), rst.getString(4),rst.getString(5)));
+					mp.addSharedPhoto(new PhotoInfo(rstTag.getString(1), rstTag.getString(2), 
+							rstTag.getString(3), rstTag.getString(4),rstTag.getString(5)));
 				}
 				this.bestMatches.add(mp);
 			}
