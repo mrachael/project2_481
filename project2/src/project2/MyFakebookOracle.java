@@ -232,9 +232,9 @@ public class MyFakebookOracle extends FakebookOracle {
 			String getPopularFriendsSql = "SELECT user_id, first_name, last_name "
 					+ "FROM " + userTableName + " WHERE user_id IN "
 					+ "(SELECT user1_id FROM ( "
-						+ "SELECT user1_id, user2_id from " + friendsTableName
-						+ " UNION "
-						+ "SELECT user2_id, user1_id from " + friendsTableName + ") "
+						+ "SELECT user1_id from " + friendsTableName
+						+ " UNION ALL "
+						+ "SELECT user2_id from " + friendsTableName + ") "
 						+ "GROUP BY user1_id HAVING COUNT(*)>80)";
 			getPopularFriendsStmt = oracleConnection.prepareStatement(getPopularFriendsSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
 			
