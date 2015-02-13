@@ -482,18 +482,86 @@ public class MyFakebookOracle extends FakebookOracle {
 	// If there are still ties, give priority to the pair with the smaller user2_id.
 	//
 	public void suggestFriendsByMutualFriends(int n) throws SQLException {
-		Long user1_id = 123L;
-		String user1FirstName = "Friend1FirstName";
-		String user1LastName = "Friend1LastName";
-		Long user2_id = 456L;
-		String user2FirstName = "Friend2FirstName";
-		String user2LastName = "Friend2LastName";
-		FriendsPair p = new FriendsPair(user1_id, user1FirstName, user1LastName, user2_id, user2FirstName, user2LastName);
+		
+		ResultSet rst = null; 
+		ResultSet frst = null;
+		PreparedStatement makeViewStmt = null;
+		PreparedStatement getPairsStmt = null;
+		PreparedStatement getDeetsStmt = null;
+		PreparedStatement dropViewStmt = null;
+		
+		try {
+			String dropViewSql = "drop view potentialpairs";
+			dropViewStmt = oracleConnection.prepareStatement(dropViewSql);
+			dropViewStmt.execute();
+			
+			String makeViewSql = "create view potentialpairs as ("
+					+ "select u1.first_name as a_fn, u1.last_name as a_ln, u2.first_name as b_fn, u2.last_name as b_ln, "
+					+ "u3.first_name as c_fn, u3.last_name as c_ln, u1.user_id as a_id, u2.user_id as b_id, u3.user_id as c_id "
+					+ " from " + userTableName + " u1, " + userTableName + " u2, " + userTableName + " u3, "
+							+ friendsTableName + " f1, " + friendsTableName + " f2 "
+					+ " where u1.user_id < u2.user_id AND "
+					+ " not exists (select user1_id from " + friendsTableName + " fa "
+							+ " where u1.user_id = fa.user1_id and u2.user_id = fa.user2_id) "
+					+ " and ((u1.user_id = f1.user1_id and f1.user2_id = u3.user_id and u3.user_id = f2.user1_id and f2.user2_id = u2.user_id) or "
+					+ " (u1.user_id = f1.user1_id and f1.user2_id = u3.user_id and u3.user_id = f2.user2_id and f2.user1_id = u2.user_id) or "
+					+ " (u1.user_id = f1.user2_id and f1.user1_id = u3.user_id and u3.user_id = f2.user1_id and f2.user2_id = u2.user_id) or "
+					+ " (u1.user_id = f1.user2_id and f1.user1_id = u3.user_id and u3.user_id = f2.user2_id and f2.user1_id = u2.user_id))) ";
+			
+			makeViewStmt = oracleConnection.prepareStatement(makeViewSql);
+			
+			makeViewStmt.execute();
+			
+			String getPairsSql = "select a_id, b_id, a_fn, a_ln, b_fn, b_ln "
+					+ "from potentialpairs group by a_id, b_id, a_fn, a_ln, b_fn, b_ln order by count(*) desc";
+			getPairsStmt = oracleConnection.prepareStatement(getPairsSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+			rst = getPairsStmt.executeQuery();
 
-		p.addSharedFriend(567L, "sharedFriend1FirstName", "sharedFriend1LastName");
-		p.addSharedFriend(678L, "sharedFriend2FirstName", "sharedFriend2LastName");
-		p.addSharedFriend(789L, "sharedFriend3FirstName", "sharedFriend3LastName");
-		this.suggestedFriendsPairs.add(p);
+			while(rst.next() && n > 0) {
+				Long user1_id = rst.getLong(1);
+				Long user2_id = rst.getLong(2);
+				String user1FirstName = rst.getString(3);
+				String user1LastName = rst.getString(4);
+				String user2FirstName = rst.getString(5);
+				String user2LastName = rst.getString(6);
+				
+				FriendsPair p = new FriendsPair(user1_id, user1FirstName, user1LastName, user2_id, user2FirstName, user2LastName);
+				
+				String getDeetsSql = "select c_id, c_fn, c_ln from potentialpairs "
+						+ " where a_id = ? and b_id = ?";
+				getDeetsStmt = oracleConnection.prepareStatement(getDeetsSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
+				getDeetsStmt.setLong(1, user1_id);
+				getDeetsStmt.setLong(2, user2_id);
+				frst = getDeetsStmt.executeQuery();
+
+				while (frst.next())
+					p.addSharedFriend(frst.getLong(1), frst.getString(2), frst.getString(3));
+				this.suggestedFriendsPairs.add(p);
+				n--;
+			}
+			dropViewStmt.execute();
+
+		} catch (SQLException e) {
+			System.err.println(e.getMessage());
+			// can do more things here
+			
+			throw e;		
+		} finally {
+			// Close statement and result set
+			if(rst != null) 
+				rst.close();
+			if(frst != null) 
+				frst.close();
+			if(makeViewStmt != null)
+				makeViewStmt.close();
+			if(getPairsStmt != null)
+				getPairsStmt.close();
+			if(getDeetsStmt != null)
+				getDeetsStmt.close();
+			if(dropViewStmt != null)
+				dropViewStmt.close();
+
+		}
 	}
 	
 	/*Done*/ 
