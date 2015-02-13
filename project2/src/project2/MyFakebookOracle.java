@@ -491,11 +491,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		PreparedStatement dropViewStmt = null;
 		
 		try {
-			String dropViewSql = "drop view potentialpairs";
-			dropViewStmt = oracleConnection.prepareStatement(dropViewSql);
-			dropViewStmt.execute();
-			
-			String makeViewSql = "create view potentialpairs as ("
+			String makeViewSql = "create or replace view potentialpairs as ("
 					+ "select u1.first_name as a_fn, u1.last_name as a_ln, u2.first_name as b_fn, u2.last_name as b_ln, "
 					+ "u3.first_name as c_fn, u3.last_name as c_ln, u1.user_id as a_id, u2.user_id as b_id, u3.user_id as c_id "
 					+ " from " + userTableName + " u1, " + userTableName + " u2, " + userTableName + " u3, "
@@ -512,33 +508,39 @@ public class MyFakebookOracle extends FakebookOracle {
 			
 			makeViewStmt.execute();
 			
-			String getPairsSql = "select a_id, b_id, a_fn, a_ln, b_fn, b_ln "
-					+ "from potentialpairs group by a_id, b_id, a_fn, a_ln, b_fn, b_ln order by count(*) desc";
+			String getPairsSql = "select a_id, b_id "
+					+ "from potentialpairs group by a_id, b_id order by count(*) desc, a_id, b_id";
 			getPairsStmt = oracleConnection.prepareStatement(getPairsSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
 			rst = getPairsStmt.executeQuery();
 
 			while(rst.next() && n > 0) {
 				Long user1_id = rst.getLong(1);
 				Long user2_id = rst.getLong(2);
-				String user1FirstName = rst.getString(3);
-				String user1LastName = rst.getString(4);
-				String user2FirstName = rst.getString(5);
-				String user2LastName = rst.getString(6);
 				
-				FriendsPair p = new FriendsPair(user1_id, user1FirstName, user1LastName, user2_id, user2FirstName, user2LastName);
-				
-				String getDeetsSql = "select c_id, c_fn, c_ln from potentialpairs "
+				String getDeetsSql = "select a_fn, a_ln, b_fn, b_ln, c_id, c_fn, c_ln from potentialpairs "
 						+ " where a_id = ? and b_id = ?";
 				getDeetsStmt = oracleConnection.prepareStatement(getDeetsSql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
 				getDeetsStmt.setLong(1, user1_id);
 				getDeetsStmt.setLong(2, user2_id);
 				frst = getDeetsStmt.executeQuery();
-
-				while (frst.next())
-					p.addSharedFriend(frst.getLong(1), frst.getString(2), frst.getString(3));
-				this.suggestedFriendsPairs.add(p);
+				if (frst.next())
+				{
+					String user1FirstName = frst.getString(1);
+					String user1LastName = frst.getString(2);
+					String user2FirstName = frst.getString(3);
+					String user2LastName = frst.getString(4);
+					FriendsPair p = new FriendsPair(user1_id, user1FirstName, user1LastName, user2_id, user2FirstName, user2LastName);
+					
+					do{
+						p.addSharedFriend(frst.getLong(5), frst.getString(6), frst.getString(7));
+					}while (frst.next());
+					
+					this.suggestedFriendsPairs.add(p);
+				}
 				n--;
 			}
+			String dropViewSql = "drop view potentialpairs";
+			dropViewStmt = oracleConnection.prepareStatement(dropViewSql);
 			dropViewStmt.execute();
 
 		} catch (SQLException e) {
